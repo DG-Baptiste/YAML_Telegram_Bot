@@ -1,0 +1,105 @@
+//handle Doc
+function handleDocumentUpload(chatId, file, username) {
+  var fileContent = getTelegramFile(file.file_id);
+
+  if (fileContent) {
+    var yamlData;
+    try {
+      yamlData = parseYAML(fileContent);
+      sendMessage(chatId, "✅ YAML file processed successfully! Here is the information from the sheet:");
+      handleYAMLData(yamlData, chatId, username); 
+
+      userYAMLButtons[chatId] = getUserYAMLButtons(chatId); 
+      // Creat new button
+      var fileName = file.file_name;
+      if(!userYAMLButtons[chatId].find(button => button.name === fileName)){         
+        userYAMLButtons[chatId].push({ name: fileName, data: yamlData });       
+        storeUserYAMLButtons(chatId);        
+        //update Menu
+        showMainMenu(chatId);
+      } else {
+        showMainMenu(chatId);
+      }
+
+     
+    } catch (e) {
+      sendMessage(chatId, "❌ Failed to parse the YAML file. Please check the file format.");
+      return;
+    }
+  } else {
+    sendMessage(chatId, "❌ Failed to retrieve the file. Please try again.");
+  }
+}
+
+
+
+// Function to parse YAML content
+function parseYAML(yamlText) {
+  var yaml = {};
+  var lines = yamlText.split('\n');
+  var currentColumn = null;
+  
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (line.startsWith('Name:')) {
+      yaml.Name = line.replace('Name:', '').trim();
+    } else if (line.startsWith('Id:')) {
+      yaml.Id = line.replace('Id:', '').trim().replace(/^"|"$/g, '');
+    } else if (line.startsWith('Text:')) {
+      yaml.Text = line.replace('Text:', '').trim().replace(/^"|"$/g, '');
+    } else if (line.startsWith('- name:')) {
+      currentColumn = {};
+      currentColumn.name = line.replace('- name:', '').trim().replace(/^"|"$/g, '');
+      yaml.Colums = yaml.Colums || [];
+      yaml.Colums.push(currentColumn);
+    } else if (line.startsWith('Sheet_gid:')) {
+      currentColumn.Sheet_gid = line.replace('Sheet_gid:', '').trim();
+    } else if (line.startsWith('Id_column:')) {
+      currentColumn.Id_column = line.replace('Id_column:', '').trim().replace(/^"|"$/g, '');
+    } else if (line.startsWith('Text_main:')) {
+      currentColumn.Text_main = line.replace('Text_main:', '').trim().replace(/^"|"$/g, '');
+    }
+  }
+  return yaml;
+}
+
+// Function to handle and process YAML data
+function handleYAMLData(yamlData, chatId, username) {
+  try {
+    var spreadsheetId = yamlData.Id;
+    var sheetGid = Number(yamlData.Colums[0].Sheet_gid);
+    var sheet = SpreadsheetApp.openById(spreadsheetId).getSheets().filter(
+                function(s) { return s.getSheetId() === sheetGid; })[0];
+    var data = sheet.getDataRange().getValues();
+    var telegramColumnIndex = data[0].indexOf(yamlData.Colums[0].Id_column);  
+    if (telegramColumnIndex === -1) {
+      sendMessage(chatId, "Column 'telegram' not found in table.");
+      return;
+    }
+    var count = 0;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][telegramColumnIndex] === username) {  
+        count++;
+        var responseText = yamlData.Text + "\n"; 
+        yamlData.Colums.forEach(function(col) {
+          var columnIndex = data[0].indexOf(col.name);  
+          if (columnIndex !== -1) {
+            var value = data[i][columnIndex];
+            responseText += col.Text_main.replace('$1', value) + "\n";  
+          } else {
+            responseText += "Column " + col.name + " not found in table.\n";
+          }
+        });
+        sendMessage(chatId, responseText);         
+      }            
+    }
+    if(count){
+      return;
+    }
+
+    sendMessage(chatId, "No matching data found in the table.");
+  } catch (e) {
+    Logger.log("Error handling YAML data: " + e.message);
+    sendMessage(chatId, "There was an error processing the YAML data.");
+  }
+}
