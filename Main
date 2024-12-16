@@ -1,0 +1,29 @@
+var userYAMLButtons = {}; 
+var scriptProperties = PropertiesService.getScriptProperties();  
+var appUrl = scriptProperties.getProperty('APP_URL');
+var token = scriptProperties.getProperty('TOKEN');
+var telegramUrl = "https://api.telegram.org/bot" + token;
+
+
+function setWebhook() {  
+  var url = telegramUrl + "/setWebhook?url=" + appUrl;
+  var res = UrlFetchApp.fetch(url).getContentText();
+  Logger.log(res);  // Log the response to check if the webhook is set correctly
+}
+
+// Function to fetch Telegram file content
+function getTelegramFile(fileId) {
+  var url = telegramUrl + "/getFile?file_id=" + fileId;
+  try {
+    var response = UrlFetchApp.fetch(url);
+    var result = JSON.parse(response.getContentText());
+    var filePath = result.result.file_path;
+    var fileUrl = "https://api.telegram.org/file/bot" + token + "/" + filePath;
+    return UrlFetchApp.fetch(fileUrl).getContentText();
+  } catch (error) {
+    Logger.log("Error fetching file: " + error.message);
+    return null;
+  }
+}
+
+
