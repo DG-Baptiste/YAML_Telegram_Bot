@@ -1,0 +1,83 @@
+function doPost(e) {
+  var contents = JSON.parse(e.postData.contents); 
+
+  var username = "@" + contents.message.from.username;
+  var chatId = contents.message.chat.id;   
+
+  if (contents.message) {
+  if (contents.message.text) {
+    handleMessage(chatId, contents.message.text, username);
+  } else if (contents.message.document) {
+    handleDocumentUpload(chatId, contents.message.document, username);
+  }
+  }
+}
+
+//handle Message
+function handleMessage(chatId, messageText, username) {
+  if (messageText.startsWith("🗑️ Delete ")) {
+    var fileName = messageText.replace("🗑️ Delete ", "");
+    deleteYAMLFile(chatId, fileName);  
+    return;
+  }
+
+  switch (messageText) {
+    case "/start":
+      sendMessage(chatId, "👋 Welcome! Let's get started.");
+      showMainMenu(chatId);
+      break;
+    case "ℹ️ Information of bot":
+      sendMessage(chatId, "🤖 This bot helps you process YAML files and interact with Google Sheets. How can I assist you today?");
+      showMainMenu(chatId);
+      break;
+    case "📄 Upload your YAML":
+      sendMessage(chatId, "📤 Please upload your YAML file so I can help you with it.");
+      showMainMenu(chatId);
+      break;
+    case "🗑️ Delete":
+      promptDeleteYAML(chatId);
+      break;
+    case "🔄 Reset": resetYAMLButtons(chatId); 
+      sendMessage(chatId, "🔄 All YAML files have been cleared. The menu has been reset."); 
+      showMainMenu(chatId);
+      break;    
+    case "❌ Exit":
+      sendMessage(chatId, "👋 You have exited the menu. Type /start to return anytime!");
+      break;
+    case "❌ Cancel":
+      sendMessage(chatId, "Cancled delete.");
+      showMainMenu(chatId);
+      break;
+    default:
+      userYAMLButtons[chatId] = getUserYAMLButtons(chatId);
+      
+      if (userYAMLButtons[chatId]) {
+        var button = userYAMLButtons[chatId].find(b => b.name === messageText);
+        if (button) {
+          sendMessage(chatId, "📜 Here is the information from your YAML file:");          
+          handleYAMLData(button.data, chatId, username); 
+          showMainMenu(chatId);
+          return;
+        }
+      }
+      sendMessage(chatId, "❓ I'm sorry, I didn't understand that. Please choose an option from the menu.");
+      showMainMenu(chatId);
+      break;
+  }
+}
+
+// Function to send a plain text message
+function sendMessage(chatId, text, replyMarkup) {
+  var url = telegramUrl + "/sendMessage";
+  var payload = {
+    chat_id: chatId,
+    text: text,
+    reply_markup: JSON.stringify(replyMarkup)
+  };
+
+  UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload)
+  });
+}
