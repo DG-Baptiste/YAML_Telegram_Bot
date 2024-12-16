@@ -1,0 +1,46 @@
+function promptDeleteYAML(chatId) {
+  var yamlButtons = getUserYAMLButtons(chatId);
+  
+  if (!yamlButtons || yamlButtons.length === 0) {
+    sendMessage(chatId, "⚠️ You don't have any YAML files to delete.");
+    showMainMenu(chatId);
+    return;
+  }
+
+  var keyboard = yamlButtons.map(function(button) {
+    return [{ text: "🗑️ Delete " + button.name }];  
+  });
+
+  keyboard.push([{ text: "❌ Cancel" }]);
+
+  var replyMarkup = {
+    keyboard: keyboard,
+    resize_keyboard: true,
+    one_time_keyboard: true
+  };
+  
+  sendMessage(chatId, "🗑️ Please choose a YAML file to delete.", replyMarkup);
+}
+
+
+//function to delete YAML FILE
+function deleteYAMLFile(chatId, fileName) {
+  userYAMLButtons[chatId] = getUserYAMLButtons(chatId);
+
+  if (userYAMLButtons[chatId]) {
+    var index = userYAMLButtons[chatId].findIndex(button => button.name === fileName);
+    
+    if (index !== -1) {
+      userYAMLButtons[chatId].splice(index, 1); 
+      storeUserYAMLButtons(chatId);  
+
+      sendMessage(chatId, `🗑️ YAML file "${fileName}" has been deleted.`);
+    } else {
+      sendMessage(chatId, `⚠️ YAML file "${fileName}" not found.`);
+    }
+  } else {
+    sendMessage(chatId, "⚠️ No YAML files to delete.");
+  }
+
+  showMainMenu(chatId); 
+}
