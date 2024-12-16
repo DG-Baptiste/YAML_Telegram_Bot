@@ -1,0 +1,19 @@
+function storeUserYAMLButtons(chatId) {
+  var userProperties = PropertiesService.getUserProperties();
+  userProperties.setProperty(chatId, JSON.stringify(userYAMLButtons[chatId]));
+}
+
+function getUserYAMLButtons(chatId) {
+  var userProperties = PropertiesService.getUserProperties();
+  var storedButtons = userProperties.getProperty(chatId);
+  if (storedButtons) {
+    return JSON.parse(storedButtons);
+  } else {
+    return [];
+  }
+}
+
+function resetYAMLButtons(chatId) { 
+  userYAMLButtons[chatId] = [];
+  storeUserYAMLButtons(chatId);
+}
